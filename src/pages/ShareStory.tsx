@@ -37,7 +37,14 @@ export default function ShareStory() {
 
     const { data, error } = await supabase
       .from('stories')
-      .select('*')
+      .select(`
+        id,
+        title,
+        content,
+        tags,
+        created_at,
+        reactions:reactions(count)
+      `)
       .eq('author_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -47,27 +54,29 @@ export default function ShareStory() {
       return;
     }
 
-    setMyStories(data || []);
+    // Update the state with the latest data from the database
+    setMyStories(data.map(story => ({
+      ...story,
+      reactionsCount: story.reactions?.[0]?.count || 0,
+    })));
   };
 
   const handleDelete = async (storyId: string) => {
-    console.log('Deleting story with ID:', storyId); // Debugging log
-  
     const { error } = await supabase
       .from('stories')
       .delete()
       .eq('id', storyId);
-  
+
     if (error) {
       console.error('Error deleting story:', error);
       toast.error('Failed to delete the story.');
       return;
     }
-  
+
     toast.success('Story deleted successfully.');
-  
-    // Update the state to remove the deleted story
-    setMyStories((prevStories) => prevStories.filter((story) => story.id !== storyId));
+
+    // Fetch the updated stories list from the database
+    fetchMyStories();
   };
 
   const handleEdit = (story: any) => {
@@ -110,7 +119,11 @@ export default function ShareStory() {
 
     toast.success('Your story has been shared successfully');
     setLoading(false);
-    fetchMyStories(); // Refresh the stories list
+
+    // Fetch the updated stories list from the database
+    fetchMyStories();
+
+    // Reset the form
     setTitle('');
     setContent('');
     setSelectedTags([]);
@@ -204,6 +217,9 @@ export default function ShareStory() {
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-gray-500">
                   Tags: {story.tags?.join(', ') || 'None'}
+                </div>
+                <div className="text-sm text-gray-500">
+                  Reactions: {story.reactionsCount}
                 </div>
                 <div className="flex items-center space-x-2">
                   <button

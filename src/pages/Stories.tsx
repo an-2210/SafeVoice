@@ -33,26 +33,29 @@ export default function Stories() {
         created_at,
         author_id,
         profiles:author_id(username),
-        reactions(count)
+        reactions:reactions(count)
       `)
       .order('created_at', { ascending: false });
-  
+
     if (selectedTags.length > 0) {
       query = query.contains('tags', selectedTags);
     }
-  
+
     const { data, error } = await query;
-  
+
     if (error) {
       console.error('Error fetching stories:', error);
       toast.error('Failed to fetch stories. Please try again.');
       return;
     }
-  
+
     console.log('Fetched stories:', data); // Debugging log
-  
+
     if (data) {
-      setStories(data);
+      setStories(data.map(story => ({
+        ...story,
+        reactionsCount: story.reactions?.[0]?.count || 0, // Safely access the first element's count
+      })));
     }
   }
 
@@ -61,7 +64,13 @@ export default function Stories() {
       .from('stories')
       .select('tags');
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching tags:', error);
+      toast.error('Failed to fetch tags. Please try again.');
+      return;
+    }
+
+    if (data) {
       const tags = Array.from(new Set(data.flatMap(story => story.tags)));
       setAvailableTags(tags);
     }
@@ -73,7 +82,7 @@ export default function Stories() {
       toast.error('Please sign in to react to stories');
       return;
     }
-  
+
     const { error } = await supabase
       .from('reactions')
       .insert({
@@ -81,36 +90,36 @@ export default function Stories() {
         user_id: user.id,
         type
       });
-  
+
     if (error) {
       console.error('Error adding reaction:', error);
       toast.error('Failed to add reaction. Please try again.');
       return;
     }
-  
+
     toast.success('Reaction added');
     fetchStories(); // Refresh stories
   };
 
   const handleReport = async (storyId: string) => {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    toast.error('Please sign in to report stories');
-    return;
-  }
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      toast.error('Please sign in to report stories');
+      return;
+    }
 
-  const { error } = await supabase.rpc('increment_report_count', {
-    story_id: storyId
-  });
+    const { error } = await supabase.rpc('increment_report_count', {
+      story_id: storyId
+    });
 
-  if (error) {
-    console.error('Error reporting story:', error);
-    toast.error('Failed to report story. Please try again.');
-    return;
-  }
+    if (error) {
+      console.error('Error reporting story:', error);
+      toast.error('Failed to report story. Please try again.');
+      return;
+    }
 
-  toast.success('Story reported. Thank you for helping keep our community safe.');
-};
+    toast.success('Story reported. Thank you for helping keep our community safe.');
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -165,7 +174,7 @@ export default function Stories() {
                   className="flex items-center space-x-1 text-pink-500 hover:text-pink-600"
                 >
                   <Heart size={16} />
-                  <span>{story.reactions.length}</span>
+                  <span>{story.reactionsCount}</span>
                 </button>
                 <button
                   onClick={() => handleReaction(story.id, 'support')}
@@ -176,7 +185,7 @@ export default function Stories() {
                 </button>
               </div>
               <div className="flex items-center space-x-4">
-                <span>By Anonymous_{story.author_id.slice(0, 8)}</span>
+                <span>By Anonymous_{story.author_id?.slice(0, 8) || 'Unknown'}</span>
                 <button
                   onClick={() => handleReport(story.id)}
                   className="text-gray-400 hover:text-red-500"
