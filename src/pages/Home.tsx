@@ -148,43 +148,48 @@ export default function Home() {
       </div>
 
       {/* Testimonials Section */}
-      <div className="bg-gray-100 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-            Voices of Strength
-          </h2>
+<div className="bg-gray-100 py-16">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+      Voices of Strength
+    </h2>
 
-          {/* Testimonial Submission Form */}
-          <form onSubmit={handleAddTestimonial} className="mb-8">
-            <textarea
-              value={testimonialContent}
-              onChange={(e) => setTestimonialContent(e.target.value)}
-              placeholder="Share your experience..."
-              className="w-full p-4 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
-              rows={4}
-              required
-            ></textarea>
-            <button
-              type="submit"
-              className="mt-4 bg-pink-500 text-white px-6 py-2 rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
-              disabled={loading}
-            >
-              {loading ? 'Submitting...' : 'Submit Testimonial'}
-            </button>
-          </form>
+    {/* Testimonial Submission Form */}
+    <form onSubmit={handleAddTestimonial} className="mb-8">
+      <textarea
+        value={testimonialContent}
+        onChange={(e) => setTestimonialContent(e.target.value)}
+        placeholder="Share your experience..."
+        className="w-full p-4 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+        rows={4}
+        required
+      ></textarea>
+      <button
+        type="submit"
+        className="mt-4 bg-pink-500 text-white px-6 py-2 rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+        disabled={loading}
+      >
+        {loading ? 'Submitting...' : 'Submit Testimonial'}
+      </button>
+    </form>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md p-6">
-                <p className="text-gray-600 mb-4">"{testimonial.content}"</p>
-                <p className="text-gray-800 font-semibold">
-                  By Anonymous_{testimonial.author_id?.slice(0, 8) || 'Unknown'}
-                </p>
-              </div>
-            ))}
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {testimonials.map((testimonial, index) => (
+        <div
+          key={index}
+          className="bg-white rounded-lg shadow-md p-6 transform transition-transform duration-300 hover:scale-105"
+        >
+          <p className="text-gray-600 mb-4 font-normal hover:font-bold transition-all duration-300">
+            "{testimonial.content}"
+          </p>
+          <p className="text-gray-800 font-semibold hover:font-normal transition-all duration-300">
+            By Anonymous_{testimonial.author_id?.slice(0, 8) || 'Unknown'}
+          </p>
         </div>
-      </div>
+      ))}
+    </div>
+  </div>
+</div>
 
       {/* About Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
