@@ -38,7 +38,7 @@ export default function Navbar() {
               <div className="ml-2">
                 <span className="text-xl font-bold text-gray-800">SafeVoice</span>
                 <p className="text-sm text-gray-600 hidden md:block animate-fade-in">
-                  Your story. Your strength. Your Safe Voice.
+                  Your story. Your strength.
                 </p>
               </div>
             </Link>
