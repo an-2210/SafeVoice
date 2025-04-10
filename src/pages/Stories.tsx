@@ -23,7 +23,7 @@ export default function Stories() {
   }, [selectedTags]);
 
   async function fetchStories() {
-    let query = supabase
+    const { data, error } = await supabase
       .from('stories')
       .select(`
         id,
@@ -32,31 +32,20 @@ export default function Stories() {
         tags,
         created_at,
         author_id,
-        profiles:author_id(username),
         reactions:reactions(count)
       `)
       .order('created_at', { ascending: false });
-
-    if (selectedTags.length > 0) {
-      query = query.contains('tags', selectedTags);
-    }
-
-    const { data, error } = await query;
-
+  
     if (error) {
       console.error('Error fetching stories:', error);
-      toast.error('Failed to fetch stories. Please try again.');
+      toast.error('Failed to fetch stories.');
       return;
     }
-
-    console.log('Fetched stories:', data); // Debugging log
-
-    if (data) {
-      setStories(data.map(story => ({
-        ...story,
-        reactionsCount: story.reactions?.[0]?.count || 0, // Safely access the first element's count
-      })));
-    }
+  
+    setStories(data.map(story => ({
+      ...story,
+      reactionsCount: story.reactions?.[0]?.count || 0,
+    })));
   }
 
   async function fetchTags() {

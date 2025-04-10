@@ -63,22 +63,22 @@ export default function About() {
         <h2 className="text-2xl font-bold text-gray-900 mb-8">Our Impact</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-3xl font-bold text-pink-500 mb-2">1000+</div>
+            <div className="text-3xl font-bold text-pink-500 mb-2">10</div>
             <p className="text-gray-600">Stories Shared</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-3xl font-bold text-pink-500 mb-2">5000+</div>
+            <div className="text-3xl font-bold text-pink-500 mb-2">50</div>
             <p className="text-gray-600">Community Members</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-3xl font-bold text-pink-500 mb-2">10000+</div>
+            <div className="text-3xl font-bold text-pink-500 mb-2">10</div>
             <p className="text-gray-600">Support Messages</p>
           </div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section>
+      <section className="mb-16">
         <div className="bg-white rounded-lg shadow-md p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact Us</h2>
           <p className="text-gray-600 mb-4">
@@ -91,6 +91,22 @@ export default function About() {
             <p className="text-gray-600">
               For immediate support, please visit our Resources page for emergency contact numbers and support services.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Owners Section */}
+      <section>
+        <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg shadow-md p-8">
+          <h2 className="text-2xl font-bold mb-6">Founders : </h2>
+          <div className="space-y-4">
+          <p className="text-lg">
+              <strong>Aditi Raj</strong> - <a href="mailto:aditiraj0205@gmail.com" className="text-yellow-300 hover:underline">aditiraj0205@gmail.com</a>
+            </p>
+            <p className="text-lg">
+              <strong>Piyush Yadav</strong> - <a href="mailto:piyushydv011@gmail.com" className="text-yellow-300 hover:underline">piyushydv011@gmail.com</a>
+            </p>
+            
           </div>
         </div>
       </section>

@@ -1,15 +1,27 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
+const TAGS = [
+  'Workplace Harassment',
+  'Domestic Violence',
+  'Street Harassment',
+  'Cyberbullying',
+  'Sexual Harassment',
+  'Discrimination',
+  'Recovery',
+  'Support',
+  'Healing',
+];
 
 export default function EditStory() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { story } = location.state || {}; // Get the story data passed via navigation
+  const story = location.state?.story;
 
   const [title, setTitle] = useState(story?.title || '');
   const [content, setContent] = useState(story?.content || '');
+  const [tags, setTags] = useState<string[]>(story?.tags || []);
   const [loading, setLoading] = useState(false);
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -24,12 +36,16 @@ export default function EditStory() {
 
     const { error } = await supabase
       .from('stories')
-      .update({ title, content })
+      .update({
+        title,
+        content,
+        tags,
+      })
       .eq('id', story.id);
 
     if (error) {
+      toast.error('Failed to update story. Please try again.');
       console.error('Error updating story:', error);
-      toast.error('Failed to update the story. Please try again.');
       setLoading(false);
       return;
     }
@@ -37,6 +53,12 @@ export default function EditStory() {
     toast.success('Story updated successfully!');
     setLoading(false);
     navigate('/share-story'); // Redirect back to the ShareStory page
+  };
+
+  const toggleTag = (tag: string) => {
+    setTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
   };
 
   return (
@@ -69,6 +91,28 @@ export default function EditStory() {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tags
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {TAGS.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  tags.includes(tag)
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">

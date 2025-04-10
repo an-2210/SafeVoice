@@ -62,23 +62,37 @@ export default function ShareStory() {
   };
 
   const handleDelete = async (storyId: string) => {
-    const { error } = await supabase
+    console.log('Deleting story with ID:', storyId); // Debugging log
+  
+    // Delete related reactions first
+    const { error: reactionsError } = await supabase
+      .from('reactions')
+      .delete()
+      .eq('story_id', storyId);
+  
+    if (reactionsError) {
+      console.error('Error deleting reactions:', reactionsError);
+      toast.error('Failed to delete reactions for the story.');
+      return;
+    }
+  
+    // Delete the story
+    const { error: storyError } = await supabase
       .from('stories')
       .delete()
       .eq('id', storyId);
-
-    if (error) {
-      console.error('Error deleting story:', error);
+  
+    if (storyError) {
+      console.error('Error deleting story:', storyError);
       toast.error('Failed to delete the story.');
       return;
     }
-
+  
     toast.success('Story deleted successfully.');
-
-    // Fetch the updated stories list from the database
-    fetchMyStories();
+  
+    // Update the state to remove the deleted story
+    setMyStories(prevStories => prevStories.filter(story => story.id !== storyId));
   };
-
   const handleEdit = (story: any) => {
     navigate(`/edit-story/${story.id}`, { state: { story } });
   };
