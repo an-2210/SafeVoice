@@ -86,7 +86,7 @@ export default function About() {
           </p>
           <div className="space-y-2">
             <p className="text-gray-600">
-              Email: <a href="mailto:safevoice@gmail.com" className="text-pink-500 hover:text-pink-600">safevoice@gmail.com</a>
+              Email: <a href="mailto:safevoice@gmail.com" className="text-pink-500 hover:text-pink-600">safevoiceforwomen@gmail.com</a>
             </p>
             <p className="text-gray-600">
               For immediate support, please visit our Resources page for emergency contact numbers and support services.

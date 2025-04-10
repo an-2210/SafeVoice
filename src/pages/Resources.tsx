@@ -19,7 +19,7 @@ export default function Resources() {
           <div className="bg-white rounded-lg shadow-md p-6">
             <AlertTriangle className="h-8 w-8 text-red-500 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Police Emergency</h3>
-            <p className="text-gray-600 mb-2">Emergency: 911</p>
+            <p className="text-gray-600 mb-2">Emergency: 100</p>
             <p className="text-sm text-gray-500">For immediate police assistance</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -107,7 +107,7 @@ export default function Resources() {
             For any questions, concerns, or support needs, please reach out to us:
           </p>
           <p className="text-gray-600">
-            Email: <a href="mailto:safevoice@gmail.com" className="text-pink-500 hover:text-pink-600">safevoice@gmail.com</a>
+            Email: <a href="mailto:safevoice@gmail.com" className="text-pink-500 hover:text-pink-600">safevoiceforwomen@gmail.com</a>
           </p>
         </div>
       </section>

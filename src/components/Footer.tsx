@@ -45,7 +45,7 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
             <ul className="space-y-2">
               <li className="text-gray-400">
-                Email: safevoice@gmail.com
+                Email: safevoiceforwomen@gmail.com
               </li>
               <li className="text-gray-400">
                 Emergency: 1800-SAFE-NOW
