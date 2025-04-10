@@ -169,7 +169,7 @@ export default function Home() {
         className="mt-4 bg-pink-500 text-white px-6 py-2 rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
         disabled={loading}
       >
-        {loading ? 'Submitting...' : 'Submit Testimonial'}
+        {loading ? 'Submitting...' : 'Give Your Review'}
       </button>
     </form>
 
