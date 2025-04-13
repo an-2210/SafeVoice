@@ -18,6 +18,14 @@ const SUPPORTED_LANGUAGES = [
   { code: 'hi', name: 'Hindi' },
   { code: 'es', name: 'Spanish' },
   { code: 'fr', name: 'French' },
+  { code: 'mr', name: 'Marathi' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'ml', name: 'Malayalam' },
+  { code: 'gu', name: 'Gujarati' },
+  { code: 'pa', name: 'Punjabi' },
   // Add more languages as needed
 ];
 
