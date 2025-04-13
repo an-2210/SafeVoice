@@ -46,6 +46,7 @@ export default function Stories() {
 
 
   async function fetchStories(/* filterTags: string[] = [] */) { // Optional: Pass tags for filtering
+    // ...existing code...
     let query = supabase
       .from('stories')
       .select(`
@@ -82,6 +83,7 @@ export default function Stories() {
   }
 
   async function fetchTags() {
+    // ...existing code...
     const { data, error } = await supabase
       .from('stories')
       .select('tags');
@@ -100,6 +102,7 @@ export default function Stories() {
   }
 
   const handleReaction = async (storyId: string, type: string) => {
+    // ...existing code...
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       toast.error('Please sign in to react to stories');
@@ -136,6 +139,7 @@ export default function Stories() {
   };
 
   const handleReport = async (storyId: string) => {
+    // ...existing code...
      const { data: { user }, error: userError } = await supabase.auth.getUser();
      if (userError || !user) {
        toast.error('Please sign in to report stories');
@@ -164,6 +168,7 @@ export default function Stories() {
 
   // --- Translation Handler ---
   const handleLanguageChange = async (storyId: string, targetLang: string) => {
+    // ...existing code...
     // Reset to original if 'original' is selected or language is empty
     if (!targetLang || targetLang === 'original') {
       setTargetLanguages(prev => ({ ...prev, [storyId]: 'original' }));
@@ -188,9 +193,16 @@ export default function Stories() {
 
       // --- Make API call to your backend endpoint ---
       // Replace '/api/translate' with your actual endpoint URL
-      const response = await fetch('/api/translate', {
+      // Ensure your deployed function URL is used here, e.g., from Supabase settings
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate`; // Example URL structure
+
+      const response = await fetch(functionUrl, { // Use the function URL
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Add Authorization header if your function requires it
+          // 'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
+         },
         body: JSON.stringify({
           title: storyToTranslate.title,
           content: storyToTranslate.content,
@@ -229,15 +241,22 @@ export default function Stories() {
     }
   };
 
+  // --- Support Message Handler ---
+  const handleSupport = () => {
+    const randomMessage = SUPPORT_MESSAGES[Math.floor(Math.random() * SUPPORT_MESSAGES.length)];
+    toast(randomMessage, { icon: '💖' }); // Use a relevant icon
+  };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Stories of Strength</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Stories of Strength</h1>
 
       {/* Tags filter */}
-      <div className="mb-8">
-        <h2 className="text-lg font-medium text-gray-700 mb-4">Filter by tags:</h2>
-        <div className="flex flex-wrap gap-2">
+      <div className="mb-8 p-4 bg-gray-50 rounded-lg shadow-sm">
+        <h2 className="text-lg font-medium text-gray-700 mb-4 text-center">Filter by tags:</h2>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {/* ... Tag buttons ... */}
           {availableTags.map((tag) => (
             <button
               key={tag}
@@ -250,8 +269,8 @@ export default function Stories() {
               }
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                 selectedTags.includes(tag)
-                  ? 'bg-pink-500 text-white hover:bg-pink-600'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-pink-500 text-white hover:bg-pink-600 shadow'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
               }`}
             >
               {tag}
@@ -260,7 +279,7 @@ export default function Stories() {
           {selectedTags.length > 0 && (
              <button
                onClick={() => setSelectedTags([])}
-               className="px-3 py-1 rounded-full text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+               className="px-3 py-1 rounded-full text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-300"
              >
                Clear Filters
              </button>
@@ -269,7 +288,7 @@ export default function Stories() {
       </div>
 
       {/* Stories grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"> {/* Adjusted gap */}
         {stories
           // Optional: Client-side filtering if not done in the query
           .filter(story => selectedTags.length === 0 || selectedTags.some(tag => story.tags?.includes(tag)))
@@ -282,98 +301,112 @@ export default function Stories() {
             const isLoading = loadingTranslations[story.id];
 
             return (
-              <div key={story.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col"> {/* Use flex-col for structure */}
+              // Improved Card Structure
+              <div key={story.id} className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col transition-shadow hover:shadow-xl"> {/* Added overflow-hidden, adjusted shadow */}
 
-                {/* Language Selector */}
-                <div className="mb-3 self-end flex items-center"> {/* Aligns selector to the right */}
-                  {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4 text-gray-500" />}
-                  <select
-                    value={currentTargetLang}
-                    onChange={(e) => handleLanguageChange(story.id, e.target.value)}
-                    disabled={isLoading}
-                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white disabled:opacity-50"
-                    aria-label={`Translate story ${story.id}`}
-                  >
-                    <option value="original">Original Language</option>
-                    {SUPPORTED_LANGUAGES.map(lang => (
-                      <option key={lang.code} value={lang.code}>{lang.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Story Content */}
-                <h2 className="text-xl font-semibold mb-2">{displayTitle}</h2>
-                <p className="text-gray-600 mb-4 flex-grow">{displayContent}</p> {/* flex-grow makes content take available space */}
-
-                {/* Media Display */}
-                {story.media_urls && story.media_urls.length > 0 && (
-                  <div className="mt-4 mb-4 space-y-2"> {/* Added mb-4 */}
-                    {story.media_urls.map((url: string, index: number) => {
-                      const isImage = url.match(/\.(jpeg|jpg|gif|png)$/i);
-                      const isVideo = url.match(/\.(mp4|webm|ogg)$/i);
-                      const isAudio = url.match(/\.(mp3|wav|ogg)$/i);
-
-                      return (
-                        <div key={index} className="relative">
-                          {isImage && (
-                            <img
-                              src={url}
-                              alt={`Media ${index + 1}`}
-                              className="w-full max-h-60 object-contain rounded-md bg-gray-100" // Use contain, limit height
-                            />
-                          )}
-                          {isVideo && (
-                            <video
-                              controls
-                              className="w-full max-h-60 object-contain rounded-md bg-black" // Use contain, limit height
-                            >
-                              <source src={url} type="video/mp4" />
-                              Your browser does not support the video tag.
-                            </video>
-                          )}
-                          {isAudio && (
-                            <audio controls className="w-full">
-                              <source src={url} type="audio/mpeg" />
-                              Your browser does not support the audio element.
-                            </audio>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {(story.tags || []).map((tag: string) => (
-                    <span
-                      key={tag}
-                      className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs" // Made tags smaller
+                {/* Card Header with Language Selector */}
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-800 flex-grow mr-2 truncate">{displayTitle}</h2> {/* Truncate long titles */}
+                  <div className="flex items-center flex-shrink-0"> {/* Prevent selector from shrinking */}
+                    {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4 text-gray-500" />}
+                    <select
+                      value={currentTargetLang}
+                      onChange={(e) => handleLanguageChange(story.id, e.target.value)}
+                      disabled={isLoading}
+                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-pink-500"
+                      aria-label={`Translate story ${story.id}`}
                     >
-                      {tag}
-                    </span>
-                  ))}
+                      <option value="original">Original</option> {/* Shortened label */}
+                      {SUPPORTED_LANGUAGES.map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* Actions - Placed at the bottom */}
-                <div className="flex items-center justify-between text-sm text-gray-500 mt-auto pt-4 border-t border-gray-100"> {/* mt-auto pushes to bottom */}
+                {/* Card Body */}
+                <div className="p-4 flex-grow"> {/* Content takes available space */}
+                  <p className="text-gray-700 mb-4 text-sm leading-relaxed">{displayContent}</p> {/* Adjusted text size and leading */}
+
+                  {/* Media Display */}
+                  {story.media_urls && story.media_urls.length > 0 && (
+                    <div className="mb-4 space-y-3"> {/* Adjusted spacing */}
+                      {story.media_urls.map((url: string, index: number) => {
+                        const isImage = url.match(/\.(jpeg|jpg|gif|png)$/i);
+                        const isVideo = url.match(/\.(mp4|webm|ogg)$/i);
+                        const isAudio = url.match(/\.(mp3|wav|ogg)$/i);
+
+                        return (
+                          <div key={index} className="relative rounded-md overflow-hidden border border-gray-200"> {/* Added border */}
+                            {isImage && (
+                              <img
+                                src={url}
+                                alt={`Media ${index + 1}`}
+                                className="w-full max-h-64 object-contain bg-gray-50" // Slightly increased max-height
+                              />
+                            )}
+                            {isVideo && (
+                              <video
+                                controls
+                                className="w-full max-h-64 object-contain bg-black" // Slightly increased max-height
+                              >
+                                <source src={url} type="video/mp4" />
+                                Your browser does not support the video tag.
+                              </video>
+                            )}
+                            {isAudio && (
+                              <audio controls className="w-full p-2 bg-gray-50"> {/* Added padding and background */}
+                                <source src={url} type="audio/mpeg" />
+                                Your browser does not support the audio element.
+                              </audio>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2">
+                    {(story.tags || []).map((tag: string) => (
+                      <span
+                        key={tag}
+                        className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full text-xs font-medium" // Adjusted style
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Footer - Actions */}
+                <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500"> {/* Added background */}
                   <div className="flex items-center space-x-4">
+                    {/* Like Button */}
                     <button
                       onClick={() => handleReaction(story.id, 'heart')}
-                      className="flex items-center space-x-1 text-pink-500 hover:text-pink-600 transition-colors"
+                      className="flex items-center space-x-1 text-pink-600 hover:text-pink-700 transition-colors group"
                       title="Like"
                     >
-                      <Heart size={16} />
-                      <span>{story.reactionsCount || 0}</span>
+                      <Heart size={18} className="group-hover:fill-current" /> {/* Slightly larger icon, fill on hover */}
+                      <span className="font-medium">{story.reactionsCount || 0}</span>
                     </button>
-                    {/* Support message button removed for simplicity, focus on translation */}
-                    {/* <button ... > ... </button> */}
+                    {/* Support Button */}
+                    <button
+                      onClick={handleSupport}
+                      className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 transition-colors group"
+                      title="Send Support"
+                    >
+                      <MessageCircle size={18} className="group-hover:fill-current" /> {/* Slightly larger icon, fill on hover */}
+                      {/* Optional: Add text like "Support" */}
+                    </button>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs">By Anon_{story.author_id?.slice(0, 6) || '...'}</span>
+                    <span className="text-xs italic">By Anon_{story.author_id?.slice(0, 6) || '...'}</span> {/* Added italic */}
+                    {/* Report Button */}
                     <button
                       onClick={() => handleReport(story.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      className="text-gray-400 hover:text-red-600 transition-colors"
                       title="Report story"
                     >
                       <Flag size={16} />
@@ -384,9 +417,11 @@ export default function Stories() {
             );
           })}
       </div>
-       {stories.length === 0 && ( // Show message if no stories fetched
-         <p className="text-center text-gray-500 mt-8">No stories found.</p>
+       {stories.length === 0 && !loadingTranslations /* Adjust loading check if needed */ && ( // Show message if no stories fetched and not loading
+         <p className="text-center text-gray-500 mt-12 text-lg">No stories found matching your criteria.</p>
        )}
+       {/* Optional: Add a loading indicator for initial fetch */}
+       {/* {isLoadingStories && <Loader2 className="animate-spin mx-auto mt-12 h-8 w-8 text-pink-500" />} */}
     </div>
   );
 }

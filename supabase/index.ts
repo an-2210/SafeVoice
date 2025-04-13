@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { GoogleGenerativeAI } from 'npm:@google/generative-ai'; // Make sure to add to import_map.json
+import { GoogleGenerativeAI } from 'npm:@google/generative-ai'; // Ensure this is in your import_map.json
 
 // Supported languages for translation
 const SUPPORTED_LANGUAGES = [
@@ -12,7 +12,7 @@ const SUPPORTED_LANGUAGES = [
 // IMPORTANT: Store your API key securely as an environment variable in Supabase
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS if calling from a different origin than your Supabase URL
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*', // Or your specific frontend domain
