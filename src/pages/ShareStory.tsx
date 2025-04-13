@@ -19,6 +19,7 @@ export default function ShareStory() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<FileList | null>(null); // State for media files
   const [loading, setLoading] = useState(false);
   const [myStories, setMyStories] = useState<any[]>([]); // To store user's stories
   const navigate = useNavigate();
@@ -34,65 +35,72 @@ export default function ShareStory() {
       navigate('/auth');
       return;
     }
-
-    const { data, error } = await supabase
-      .from('stories')
-      .select(`
-        id,
-        title,
-        content,
-        tags,
-        created_at,
-        reactions:reactions(count)
-      `)
-      .eq('author_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+  
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .select(`
+          id,
+          title,
+          content,
+          tags,
+          media_urls,
+          created_at,
+          reactions (count)
+        `)
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false });
+  
+      if (error) {
+        console.error('Error fetching stories:', error);
+        toast.error('Failed to fetch your stories.');
+        return;
+      }
+  
+      // Update the state with the latest data from the database
+      setMyStories(data.map(story => ({
+        ...story,
+        reactionsCount: story.reactions?.[0]?.count || 0,
+      })));
+    } catch (error) {
       console.error('Error fetching stories:', error);
       toast.error('Failed to fetch your stories.');
-      return;
     }
-
-    // Update the state with the latest data from the database
-    setMyStories(data.map(story => ({
-      ...story,
-      reactionsCount: story.reactions?.[0]?.count || 0,
-    })));
   };
 
   const handleDelete = async (storyId: string) => {
     console.log('Deleting story with ID:', storyId); // Debugging log
-  
+
     // Delete related reactions first
     const { error: reactionsError } = await supabase
       .from('reactions')
       .delete()
       .eq('story_id', storyId);
-  
+
     if (reactionsError) {
       console.error('Error deleting reactions:', reactionsError);
       toast.error('Failed to delete reactions for the story.');
       return;
     }
-  
+
     // Delete the story
     const { error: storyError } = await supabase
       .from('stories')
       .delete()
       .eq('id', storyId);
-  
+
     if (storyError) {
       console.error('Error deleting story:', storyError);
       toast.error('Failed to delete the story.');
       return;
     }
-  
+
     toast.success('Story deleted successfully.');
-  
+
     // Update the state to remove the deleted story
     setMyStories(prevStories => prevStories.filter(story => story.id !== storyId));
   };
+
   const handleEdit = (story: any) => {
     navigate(`/edit-story/${story.id}`, { state: { story } });
   };
@@ -100,13 +108,13 @@ export default function ShareStory() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+  
     if (!title.trim() || !content.trim()) {
       toast.error('Title and content are required.');
       setLoading(false);
       return;
     }
-
+  
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       toast.error('Please sign in to share your story');
@@ -114,7 +122,42 @@ export default function ShareStory() {
       setLoading(false);
       return;
     }
-
+  
+    let mediaUrls: string[] = [];
+    if (mediaFiles) {
+      for (const file of Array.from(mediaFiles)) {
+        // Check file size (50 MB limit)
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error(`File ${file.name} is too large. Maximum size is 50 MB.`);
+          continue;
+        }
+  
+        // Check file type
+        const allowedTypes = ['image/', 'video/', 'audio/'];
+        if (!allowedTypes.some(type => file.type.startsWith(type))) {
+          toast.error(`File ${file.name} is not a supported type.`);
+          continue;
+        }
+  
+        const { data, error } = await supabase.storage
+          .from('story-media')
+          .upload(`${user.id}/${Date.now()}-${file.name}`, file);
+  
+        if (error) {
+          console.error('Error uploading media:', error);
+          toast.error('Failed to upload media. Please try again.');
+          setLoading(false);
+          return;
+        }
+  
+        const publicUrl = supabase.storage
+          .from('story-media')
+          .getPublicUrl(data.path).data.publicUrl;
+  
+        mediaUrls.push(publicUrl);
+      }
+    }
+  
     const { error } = await supabase
       .from('stories')
       .insert({
@@ -122,27 +165,28 @@ export default function ShareStory() {
         content,
         tags: selectedTags,
         author_id: user.id,
+        media_urls: mediaUrls, // Save media URLs in the database
       });
-
+  
     if (error) {
       toast.error('Failed to share story. Please try again.');
       console.error('Error inserting story:', error);
       setLoading(false);
       return;
     }
-
+  
     toast.success('Your story has been shared successfully');
     setLoading(false);
-
+  
     // Fetch the updated stories list from the database
     fetchMyStories();
-
+  
     // Reset the form
     setTitle('');
     setContent('');
     setSelectedTags([]);
+    setMediaFiles(null);
   };
-
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
       prev.includes(tag)
@@ -180,6 +224,20 @@ export default function ShareStory() {
             onChange={(e) => setContent(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
             required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="media" className="block text-sm font-medium text-gray-700">
+            Upload Media (Optional)
+          </label>
+          <input
+            type="file"
+            id="media"
+            multiple
+            accept="image/*,video/*,audio/*"
+            onChange={(e) => setMediaFiles(e.target.files)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
           />
         </div>
 
@@ -228,6 +286,45 @@ export default function ShareStory() {
             <li key={story.id} className="bg-white shadow rounded-lg p-4">
               <h3 className="text-lg font-bold text-gray-900">{story.title}</h3>
               <p className="text-gray-700 mt-2">{story.content}</p>
+
+              {/* Display media if available */}
+              {story.media_urls && story.media_urls.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {story.media_urls.map((url: string, index: number) => {
+                  const isImage = url.match(/\.(jpeg|jpg|gif|png)$/i);
+                  const isVideo = url.match(/\.(mp4|webm|ogg)$/i);
+                  const isAudio = url.match(/\.(mp3|wav|ogg)$/i);
+
+                  return (
+                    <div key={index} className="relative">
+                      {isImage && (
+                        <img
+                          src={url}
+                          alt={`Media ${index + 1}`}
+                          className="w-full max-h-96 object-contain rounded-md"
+                        />
+                      )}
+                      {isVideo && (
+                        <video
+                          controls
+                          className="w-full max-h-96 object-contain rounded-md"
+                        >
+                          <source src={url} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                      )}
+                      {isAudio && (
+                        <audio controls className="w-full">
+                          <source src={url} type="audio/mpeg" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-gray-500">
                   Tags: {story.tags?.join(', ') || 'None'}

@@ -38,6 +38,7 @@ export default function Home() {
         id,
         title,
         content,
+        media_urls,
         author_id,
         profiles:author_id(username),
         reactions:reactions(count)
@@ -125,8 +126,8 @@ export default function Home() {
   </div>
 </div>
 
-      {/* Top Stories Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+       {/* Top Stories Section */}
+       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-3xl font-bold text-gray-900 mb-8">Top Stories</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {topStories.map((story) => (
@@ -138,7 +139,37 @@ export default function Home() {
               <p className="text-gray-600 mb-4">
                 {story.content.substring(0, 150)}...
               </p>
-              <div className="flex justify-between items-center text-sm text-gray-500">
+
+              {/* Display media if available */}
+              {story.media_urls && story.media_urls.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {story.media_urls.map((url: string, index: number) => {
+                    const isImage = url.match(/\.(jpeg|jpg|gif|png)$/i);
+                    const isVideo = url.match(/\.(mp4|webm|ogg)$/i);
+                    const isAudio = url.match(/\.(mp3|wav|ogg)$/i);
+
+                    return (
+                      <div key={index}>
+                        {isImage && <img src={url} alt={`Media ${index + 1}`} className="w-full rounded-md" />}
+                        {isVideo && (
+                          <video controls className="w-full rounded-md">
+                            <source src={url} type="video/mp4" />
+                            Your browser does not support the video tag.
+                          </video>
+                        )}
+                        {isAudio && (
+                          <audio controls className="w-full">
+                            <source src={url} type="audio/mpeg" />
+                            Your browser does not support the audio element.
+                          </audio>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-sm text-gray-500 mt-4">
                 <span>By Anonymous_{story.author_id?.slice(0, 8) || 'Unknown'}</span>
                 <span>{story.reactionsCount} reactions</span>
               </div>
@@ -146,7 +177,7 @@ export default function Home() {
           ))}
         </div>
       </div>
-
+      
       {/* Testimonials Section */}
 <div className="bg-gray-100 py-16">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

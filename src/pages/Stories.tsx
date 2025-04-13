@@ -30,22 +30,25 @@ export default function Stories() {
         title,
         content,
         tags,
+        media_urls,
         created_at,
         author_id,
         reactions:reactions(count)
       `)
       .order('created_at', { ascending: false });
-  
+
     if (error) {
       console.error('Error fetching stories:', error);
       toast.error('Failed to fetch stories.');
       return;
     }
-  
-    setStories(data.map(story => ({
-      ...story,
-      reactionsCount: story.reactions?.[0]?.count || 0,
-    })));
+
+    setStories(
+      data.map((story) => ({
+        ...story,
+        reactionsCount: story.reactions?.[0]?.count || 0,
+      }))
+    );
   }
 
   async function fetchTags() {
@@ -60,7 +63,7 @@ export default function Stories() {
     }
 
     if (data) {
-      const tags = Array.from(new Set(data.flatMap(story => story.tags)));
+      const tags = Array.from(new Set(data.flatMap((story) => story.tags)));
       setAvailableTags(tags);
     }
   }
@@ -118,14 +121,16 @@ export default function Stories() {
       <div className="mb-8">
         <h2 className="text-lg font-medium text-gray-700 mb-4">Filter by tags:</h2>
         <div className="flex flex-wrap gap-2">
-          {availableTags.map(tag => (
+          {availableTags.map((tag) => (
             <button
               key={tag}
-              onClick={() => setSelectedTags(prev =>
-                prev.includes(tag)
-                  ? prev.filter(t => t !== tag)
-                  : [...prev, tag]
-              )}
+              onClick={() =>
+                setSelectedTags((prev) =>
+                  prev.includes(tag)
+                    ? prev.filter((t) => t !== tag)
+                    : [...prev, tag]
+                )
+              }
               className={`px-3 py-1 rounded-full text-sm font-medium ${
                 selectedTags.includes(tag)
                   ? 'bg-pink-500 text-white'
@@ -139,11 +144,49 @@ export default function Stories() {
       </div>
 
       {/* Stories grid */}
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {stories.map((story) => (
           <div key={story.id} className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">{story.title}</h2>
             <p className="text-gray-600 mb-4">{story.content}</p>
+
+            {/* Display media if available */}
+            {story.media_urls && story.media_urls.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {story.media_urls.map((url: string, index: number) => {
+                  const isImage = url.match(/\.(jpeg|jpg|gif|png)$/i);
+                  const isVideo = url.match(/\.(mp4|webm|ogg)$/i);
+                  const isAudio = url.match(/\.(mp3|wav|ogg)$/i);
+
+                  return (
+                    <div key={index} className="relative">
+                      {isImage && (
+                        <img
+                          src={url}
+                          alt={`Media ${index + 1}`}
+                          className="w-full h-48 object-cover rounded-md"
+                        />
+                      )}
+                      {isVideo && (
+                        <video
+                          controls
+                          className="w-full h-48 object-cover rounded-md"
+                        >
+                          <source src={url} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                      )}
+                      {isAudio && (
+                        <audio controls className="w-full">
+                          <source src={url} type="audio/mpeg" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2 mb-4">
               {story.tags.map((tag: string) => (
