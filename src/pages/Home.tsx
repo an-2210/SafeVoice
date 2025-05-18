@@ -37,32 +37,7 @@ interface Testimonial {
   author_id?: string;
 }
 
-// Custom Arrow Components with gradient
-const SlickArrowLeft = (props: any) => (
-  <button
-    {...props}
-    className="slick-arrow slick-prev !z-20 !-left-6 md:!-left-10 absolute top-1/2 -translate-y-1/2
-      bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full shadow-lg p-2
-      hover:from-pink-600 hover:to-purple-700 border-2 border-white"
-    aria-label="Previous"
-    style={{ ...props.style, display: "block" }}
-  >
-    <FaChevronLeft size={24} />
-  </button>
-);
 
-const SlickArrowRight = (props: any) => (
-  <button
-    {...props}
-    className="slick-arrow slick-next !z-20 !-right-6 md:!-right-10 absolute top-1/2 -translate-y-1/2
-      bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full shadow-lg p-2
-      hover:from-pink-600 hover:to-purple-700 border-2 border-white"
-    aria-label="Next"
-    style={{ ...props.style, display: "block" }}
-  >
-    <FaChevronRight size={24} />
-  </button>
-);
 
 const testimonialSliderSettings = {
   dots: false,
