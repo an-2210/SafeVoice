@@ -11,6 +11,7 @@ import Auth from './pages/Auth';
 import Footer from './components/Footer';
 import EditStory from './pages/EditStory';
 
+
 function App() {
   return (
     <Router>
@@ -25,6 +26,7 @@ function App() {
             <Route path="/resources" element={<Resources />} />
             <Route path="/about" element={<About />} />
             <Route path="/auth" element={<Auth />} />
+
           </Routes>
         </main>
         <Footer />

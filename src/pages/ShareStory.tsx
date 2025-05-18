@@ -22,7 +22,7 @@ export default function ShareStory() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [mediaFiles, setMediaFiles] = useState<FileList | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false); // Loading for form submission
   const [myStories, setMyStories] = useState<any[]>([]);
   const [correctedStories, setCorrectedStories] = useState<{ [storyId: string]: string }>({});
@@ -123,12 +123,18 @@ export default function ShareStory() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    // ... existing handleSubmit code ...
     e.preventDefault();
     setLoading(true);
 
     if (!title.trim() || !content.trim()) {
       toast.error('Title and content are required.');
+      setLoading(false);
+      return;
+    }
+
+    // Limit to 10 files
+    if (mediaFiles.length > 10) {
+      toast.error('You can upload a maximum of 10 files.');
       setLoading(false);
       return;
     }
@@ -143,7 +149,7 @@ export default function ShareStory() {
 
     let mediaUrls: string[] = [];
     if (mediaFiles) {
-      for (const file of Array.from(mediaFiles)) {
+      for (const file of mediaFiles) {
         // Check file size (50 MB limit)
         if (file.size > 50 * 1024 * 1024) {
           toast.error(`File ${file.name} is too large. Maximum size is 50 MB.`);
@@ -203,7 +209,7 @@ export default function ShareStory() {
     setTitle('');
     setContent('');
     setSelectedTags([]);
-    setMediaFiles(null);
+    setMediaFiles([]);
   };
 
   const toggleTag = (tag: string) => {
@@ -360,10 +366,36 @@ export default function ShareStory() {
             id="media"
             multiple
             accept="image/*,video/*,audio/*"
-            onChange={(e) => setMediaFiles(e.target.files)}
+            onChange={(e) => {
+              if (!e.target.files) return;
+              const newFiles = Array.from(e.target.files);
+              setMediaFiles(prev =>
+                [...prev, ...newFiles].slice(0, 10) // Keep only up to 10 files
+              );
+            }}
             className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
           />
         </div>
+
+        {/* Media Files List */}
+        {mediaFiles.length > 0 && (
+          <ul className="mt-2 text-sm text-gray-600">
+            {mediaFiles.map((file, idx) => (
+              <li key={idx} className="flex items-center">
+                {file.name}
+                <button
+                  type="button"
+                  className="ml-2 text-red-500 hover:underline"
+                  onClick={() =>
+                    setMediaFiles(files => files.filter((_, i) => i !== idx))
+                  }
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/* Tags Selection */}
         <div>
