@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Slider from 'react-slick';
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { useNavigate } from 'react-router-dom';
 
 // Firebase imports
 import { auth } from '../lib/firebase';
@@ -13,7 +14,8 @@ import {
   limit, 
   getDocs,
   addDoc,
-  serverTimestamp 
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 
 // Initialize Firestore
@@ -117,6 +119,7 @@ export default function Home() {
   const [testimonialContent, setTestimonialContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [expandedStoryId, setExpandedStoryId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -156,7 +159,7 @@ export default function Home() {
         const reactionsRef = collection(db, 'reactions');
         const reactionsQuery = query(
           reactionsRef,
-          // where('story_id', '==', doc.id)
+          where('story_id', '==', doc.id)
         );
         
         const reactionsSnapshot = await getDocs(reactionsQuery);
@@ -174,6 +177,7 @@ export default function Home() {
       setTopStories(storiesData);
     } catch (error) {
       console.error('Error fetching stories:', error);
+      setTopStories([]); // Set empty array on error
     }
   }
 
@@ -195,6 +199,7 @@ export default function Home() {
       setTestimonials(testimonialsData);
     } catch (error) {
       console.error('Error fetching testimonials:', error);
+      setTestimonials([]); // Set empty array on error
     }
   }
 
@@ -340,23 +345,35 @@ export default function Home() {
           </h2>
 
           {/* Testimonial Submission Form */}
-          <form onSubmit={handleAddTestimonial} className="mb-12 max-w-xl mx-auto">
-            <textarea
-              value={testimonialContent}
-              onChange={(e) => setTestimonialContent(e.target.value)}
-              placeholder="Share your experience with SafeVoice..."
-              className="w-full p-4 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
-              rows={4}
-              required
-            ></textarea>
-            <button
-              type="submit"
-              className="mt-4 bg-pink-500 text-white px-6 py-2 rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-colors duration-200"
-              disabled={loading}
-            >
-              {loading ? 'Submitting...' : 'Give Your Review'}
-            </button>
-          </form>
+          {auth.currentUser ? (
+            <form onSubmit={handleAddTestimonial} className="mb-12 max-w-xl mx-auto">
+              <textarea
+                value={testimonialContent}
+                onChange={(e) => setTestimonialContent(e.target.value)}
+                placeholder="Share your experience with SafeVoice..."
+                className="w-full p-4 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                rows={4}
+                required
+              ></textarea>
+              <button
+                type="submit"
+                className="mt-4 bg-pink-500 text-white px-6 py-2 rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-colors duration-200"
+                disabled={loading}
+              >
+                {loading ? 'Submitting...' : 'Give Your Review'}
+              </button>
+            </form>
+          ) : (
+            <div className="mb-12 max-w-xl mx-auto text-center">
+              <p className="text-gray-600 mb-2">Please sign in to share your experience</p>
+              <button
+                onClick={() => navigate('/auth')}
+                className="bg-pink-500 text-white px-6 py-2 rounded-md hover:bg-pink-600"
+              >
+                Sign In
+              </button>
+            </div>
+          )}
 
           {testimonials.length > 0 ? (
             testimonials.length > 3 ? ( // Only use Slider if more than 3 testimonials

@@ -12,7 +12,8 @@ import {
   addDoc,
   getDoc,
   doc,
-  serverTimestamp
+  serverTimestamp,
+  setDoc
 } from 'firebase/firestore';
 
 // Initialize Firestore
@@ -169,8 +170,11 @@ export default function Stories() {
         return;
       }
       
-      // Add the reaction
-      await addDoc(collection(db, 'reactions'), {
+      // Generate a deterministic ID
+      const reactionId = `${user.uid}_${storyId}`;
+      
+      // Add the reaction with the specific ID
+      await setDoc(doc(db, 'reactions', reactionId), {
         story_id: storyId,
         user_id: user.uid,
         type: type,
