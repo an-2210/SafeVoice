@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Menu, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { auth } from '../lib/firebase'; // Change this import
+import { onAuthStateChanged } from 'firebase/auth'; // Add this import
+import { toast } from 'react-hot-toast'; // Add for sign-out feedback
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -9,20 +11,24 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    // Replace Supabase auth with Firebase auth
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    // Clean up the subscription
+    return () => unsubscribe();
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      await auth.signOut();
+      toast.success('Signed out successfully');
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out');
+    }
   };
 
   return (
@@ -53,7 +59,7 @@ export default function Navbar() {
             <Link to="/about" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
             {user ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700">Anonymous_{user.id.slice(0, 8)}</span>
+                <span className="text-gray-700">Anonymous_{user.uid.slice(0, 8)}</span>
                 <button
                   onClick={handleSignOut}
                   className="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600"
@@ -93,7 +99,7 @@ export default function Navbar() {
               <Link to="/about" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
               {user ? (
                 <>
-                  <span className="block text-gray-700 px-3 py-2">Anonymous_{user.id.slice(0, 8)}</span>
+                  <span className="block text-gray-700 px-3 py-2">Anonymous_{user.uid.slice(0, 8)}</span>
                   <button
                     onClick={handleSignOut}
                     className="block w-full text-left text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md"

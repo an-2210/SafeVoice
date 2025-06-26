@@ -1,11 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { supabase } from '../lib/supabase';
-import { Edit, Trash2, CheckSquare, Loader2 } from 'lucide-react'; // Import icons
+import { auth } from '../lib/firebase';
+import { Edit, Trash2, CheckSquare, Loader2 } from 'lucide-react';
+import { User } from 'firebase/auth';
+
+// Firebase imports
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  deleteDoc,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from 'firebase/firestore';
+import { 
+  getStorage, 
+  ref, 
+  uploadBytes, 
+  getDownloadURL, 
+  deleteObject 
+} from 'firebase/storage';
+
+// Initialize Firestore and Storage
+const db = getFirestore();
+const storage = getStorage();
 
 const TAGS = [
-  // ... TAGS array ...
   'Workplace Harassment',
   'Domestic Violence',
   'Street Harassment',
@@ -17,17 +44,51 @@ const TAGS = [
   'Healing',
 ];
 
+// Add this function to ensure profile exists before creating a story
+const ensureProfileExists = async (user: User) => {
+  try {
+    const profileRef = doc(db, 'profiles', user.uid);
+    const profileSnap = await getDoc(profileRef);
+    
+    if (!profileSnap.exists()) {
+      // Profile doesn't exist, create it
+      await setDoc(profileRef, {
+        email: user.email || 'anonymous@safeuser.com',
+        display_name: user.displayName || user.email?.split('@')[0] || 'Anonymous User',
+        created_at: serverTimestamp(),
+      });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in ensureProfileExists:', error);
+    return false;
+  }
+};
+
+// Add this interface near the top of your file
+interface Story {
+  id: string;
+  title: string;
+  content: string;
+  tags?: string[];
+  author_id: string;
+  media_urls?: string[];
+  created_at: any; // Or use proper Timestamp type
+  reactionsCount?: number;
+}
+
 export default function ShareStory() {
-  // ... existing states ...
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
-  const [loading, setLoading] = useState(false); // Loading for form submission
-  const [myStories, setMyStories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [myStories, setMyStories] = useState<Story[]>([]);
   const [correctedStories, setCorrectedStories] = useState<{ [storyId: string]: string }>({});
   const [loadingCorrection, setLoadingCorrection] = useState<{ [storyId: string]: boolean }>({});
-  const [loadingFormCorrection, setLoadingFormCorrection] = useState(false); // Loading for form grammar check
+  const [loadingFormCorrection, setLoadingFormCorrection] = useState(false);
+  const [loadingStories, setLoadingStories] = useState(false); // Add a loading state for fetching stories
 
   const navigate = useNavigate();
 
@@ -36,90 +97,151 @@ export default function ShareStory() {
   }, []);
 
   const fetchMyStories = async () => {
-    // ... existing fetchMyStories code ...
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    setLoadingStories(true);
+    const user = auth.currentUser;
+    if (!user) {
       toast.error('Please sign in to view your stories');
       navigate('/auth');
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('stories')
-        .select(`
-          id,
-          title,
-          content,
-          tags,
-          media_urls,
-          created_at,
-          reactions (count)
-        `)
-        .eq('author_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching stories:', error);
-        toast.error('Failed to fetch your stories.');
-        return;
+      // Create a query against the stories collection
+      const storiesRef = collection(db, 'stories');
+      const q = query(
+        storiesRef,
+        where('author_id', '==', user.uid),
+        orderBy('created_at', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const storiesData = querySnapshot.docs.map(doc => {
+        // Properly cast the document data to match the Story interface
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title || '',
+          content: data.content || '',
+          tags: data.tags || [],
+          author_id: data.author_id || '',
+          media_urls: data.media_urls || [],
+          created_at: data.created_at,
+          reactionsCount: 0
+        } as Story;
+      });
+      
+      // Get reactions count for each story
+      for (let story of storiesData) {
+        const reactionsRef = collection(db, 'reactions');
+        const reactionsQuery = query(reactionsRef, where('story_id', '==', story.id));
+        const reactionsSnap = await getDocs(reactionsQuery);
+        story.reactionsCount = reactionsSnap.size;
       }
-
-      // Update the state with the latest data from the database
-      setMyStories(data.map(story => ({
-        ...story,
-        reactionsCount: story.reactions?.[0]?.count || 0,
-      })));
+      
+      setMyStories(storiesData);
     } catch (error) {
       console.error('Error fetching stories:', error);
       toast.error('Failed to fetch your stories.');
+    } finally {
+      setLoadingStories(false);
     }
   };
 
   const handleDelete = async (storyId: string) => {
-    // ... existing handleDelete code ...
-    console.log('Deleting story with ID:', storyId); // Debugging log
-
-    // Delete related reactions first
-    const { error: reactionsError } = await supabase
-      .from('reactions')
-      .delete()
-      .eq('story_id', storyId);
-
-    if (reactionsError) {
-      console.error('Error deleting reactions:', reactionsError);
-      toast.error('Failed to delete reactions for the story.');
+    console.log('Deleting story with ID:', storyId);
+    
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('Please sign in to delete your story');
+      navigate('/auth');
       return;
     }
 
-    // Delete the story
-    const { error: storyError } = await supabase
-      .from('stories')
-      .delete()
-      .eq('id', storyId);
+    try {
+      // First, get the story to check for media URLs
+      const storyRef = doc(db, 'stories', storyId);
+      const storySnap = await getDoc(storyRef);
+      
+      if (!storySnap.exists()) {
+        toast.error('Story not found');
+        return;
+      }
+      
+      const storyData = storySnap.data();
+      
+      // Verify ownership
+      if (storyData.author_id !== user.uid) {
+        toast.error('You can only delete your own stories');
+        return;
+      }
+      
+      // Delete media files from storage if they exist
+      if (storyData.media_urls && storyData.media_urls.length > 0) {
+        for (const url of storyData.media_urls) {
+          try {
+            // Extract path from URL
+            const pathMatch = url.match(/o\/(.+)\?/);
+            if (pathMatch && pathMatch[1]) {
+              const path = decodeURIComponent(pathMatch[1]);
+              const fileRef = ref(storage, path);
+              await deleteObject(fileRef);
+            }
+          } catch (error) {
+            console.error('Error deleting media file:', error);
+            // Continue with other deletions even if one fails
+          }
+        }
+      }
+      
+      // Delete related reactions
+      const reactionsRef = collection(db, 'reactions');
+      const q = query(reactionsRef, where('story_id', '==', storyId));
+      const reactionsSnap = await getDocs(q);
+      
+      const deletePromises = reactionsSnap.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      
+      // Delete the story
+      await deleteDoc(storyRef);
 
-    if (storyError) {
-      console.error('Error deleting story:', storyError);
+      toast.success('Story deleted successfully.');
+
+      // Update state
+      setMyStories(prevStories => prevStories.filter(story => story.id !== storyId));
+      setCorrectedStories(prev => {
+        const newState = { ...prev };
+        delete newState[storyId];
+        return newState;
+      });
+    } catch (error) {
+      console.error('Error deleting story:', error);
       toast.error('Failed to delete the story.');
-      return;
     }
-
-    toast.success('Story deleted successfully.');
-
-    // Update the state to remove the deleted story
-    setMyStories(prevStories => prevStories.filter(story => story.id !== storyId));
-    // Also remove any corrected version from state
-    setCorrectedStories(prev => {
-      const newState = { ...prev };
-      delete newState[storyId];
-      return newState;
-    });
   };
 
   const handleEdit = (story: any) => {
-    // ... existing handleEdit code ...
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('Please sign in to edit your story');
+      navigate('/auth');
+      return;
+    }
+
+    // Verify ownership
+    if (story.author_id !== user.uid) {
+      toast.error('You can only edit your own stories');
+      return;
+    }
+
     const contentToEdit = correctedStories[story.id] || story.content;
-    navigate(`/edit-story/${story.id}`, { state: { story: { ...story, content: contentToEdit } } });
+    navigate(`/edit-story/${story.id}`, { 
+      state: { 
+        story: { 
+          ...story, 
+          content: contentToEdit,
+        } 
+      } 
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,81 +261,68 @@ export default function ShareStory() {
       return;
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const user = auth.currentUser;
+    if (!user) {
       toast.error('Please sign in to share your story');
       navigate('/auth');
       setLoading(false);
       return;
     }
-
+    
+    // Ensure profile exists
+    const profileCreated = await ensureProfileExists(user);
+    if (!profileCreated) {
+      toast.error('Failed to create user profile');
+      setLoading(false);
+      return;
+    }
+    
     let mediaUrls: string[] = [];
-    if (mediaFiles) {
+    if (mediaFiles && mediaFiles.length > 0) {
       for (const file of mediaFiles) {
-        // Check file size (50 MB limit)
-        if (file.size > 50 * 1024 * 1024) {
-          toast.error(`File ${file.name} is too large. Maximum size is 50 MB.`);
-          continue;
-        }
-
-        // Check file type
-        const allowedTypes = ['image/', 'video/', 'audio/'];
-        if (!allowedTypes.some(type => file.type.startsWith(type))) {
-          toast.error(`File ${file.name} is not a supported type.`);
-          continue;
-        }
-
-        const { data, error } = await supabase.storage
-          .from('story-media')
-          .upload(`${user.id}/${Date.now()}-${file.name}`, file);
-
-        if (error) {
+        try {
+          // Upload to Firebase Storage
+          const downloadURL = await uploadMediaFile(file, user.uid);
+          mediaUrls.push(downloadURL);
+        } catch (error) {
           console.error('Error uploading media:', error);
           toast.error('Failed to upload media. Please try again.');
           setLoading(false);
           return;
         }
-
-        const publicUrl = supabase.storage
-          .from('story-media')
-          .getPublicUrl(data.path).data.publicUrl;
-
-        mediaUrls.push(publicUrl);
       }
     }
 
-    const { error } = await supabase
-      .from('stories')
-      .insert({
+    try {
+      // Add a new document to Firestore
+      await addDoc(collection(db, 'stories'), {
         title,
         content,
         tags: selectedTags,
-        author_id: user.id,
-        media_urls: mediaUrls, // Save media URLs in the database
+        author_id: user.uid,
+        media_urls: mediaUrls,
+        created_at: serverTimestamp(),
       });
 
-    if (error) {
-      toast.error('Failed to share story. Please try again.');
+      toast.success('Your story has been shared successfully');
+      
+      // Fetch the updated stories list
+      fetchMyStories();
+
+      // Reset the form
+      setTitle('');
+      setContent('');
+      setSelectedTags([]);
+      setMediaFiles([]);
+    } catch (error) {
       console.error('Error inserting story:', error);
+      toast.error('Failed to share story. Please try again.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    toast.success('Your story has been shared successfully');
-    setLoading(false);
-
-    // Fetch the updated stories list from the database
-    fetchMyStories();
-
-    // Reset the form
-    setTitle('');
-    setContent('');
-    setSelectedTags([]);
-    setMediaFiles([]);
   };
 
   const toggleTag = (tag: string) => {
-    // ... existing toggleTag code ...
     setSelectedTags(prev =>
       prev.includes(tag)
         ? prev.filter(t => t !== tag)
@@ -221,21 +330,17 @@ export default function ShareStory() {
     );
   };
 
-  // --- Grammar Correction Handler (for existing stories) ---
+  // Grammar correction functions remain mostly the same, just with different API endpoint structure
   const handleGrammarFix = async (storyId: string, originalContent: string) => {
-    // ... existing handleGrammarFix code ...
     setLoadingCorrection(prev => ({ ...prev, [storyId]: true }));
     try {
-      // --- Make API call to your backend grammar correction endpoint ---
-      // Replace with your actual deployed function URL
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/correct-grammar`;
+      // Assuming you'll deploy a Firebase Cloud Function for grammar correction
+      const functionUrl = `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/correctGrammar`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add Authorization header if needed
-          // 'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
         },
         body: JSON.stringify({ content: originalContent }),
       });
@@ -247,14 +352,12 @@ export default function ShareStory() {
 
       const { correctedContent } = await response.json();
 
-      // Update the corrected stories state
       setCorrectedStories(prev => ({
         ...prev,
         [storyId]: correctedContent,
       }));
 
       toast.success('Grammar checked and updated.');
-
     } catch (error: any) {
       console.error("Grammar correction error:", error);
       toast.error(`Failed to correct grammar: ${error.message}`);
@@ -262,9 +365,7 @@ export default function ShareStory() {
       setLoadingCorrection(prev => ({ ...prev, [storyId]: false }));
     }
   };
-  // --- End Grammar Correction Handler ---
 
-  // --- Grammar Correction Handler for the FORM ---
   const handleFormGrammarFix = async () => {
     if (!content.trim()) {
       toast.error("Please write something in the story content first.");
@@ -272,15 +373,15 @@ export default function ShareStory() {
     }
     setLoadingFormCorrection(true);
     try {
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/correct-grammar`;
+      // Assuming you'll deploy a Firebase Cloud Function for grammar correction
+      const functionUrl = `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/correctGrammar`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add Authorization header if needed
         },
-        body: JSON.stringify({ content: content }), // Send current form content
+        body: JSON.stringify({ content: content }) // Fixed the semicolon error
       });
 
       if (!response.ok) {
@@ -289,12 +390,8 @@ export default function ShareStory() {
       }
 
       const { correctedContent } = await response.json();
-
-      // Update the form's content state directly
       setContent(correctedContent);
-
       toast.success('Grammar checked and updated in the editor.');
-
     } catch (error: any) {
       console.error("Form grammar correction error:", error);
       toast.error(`Failed to correct grammar: ${error.message}`);
@@ -302,11 +399,10 @@ export default function ShareStory() {
       setLoadingFormCorrection(false);
     }
   };
-  // --- End Form Grammar Correction Handler ---
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* ... Form for sharing a new story ... */}
+      {/* Form for sharing a new story */}
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Share Your Story</h1>
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow mb-12">
         {/* Title Input */}
@@ -439,10 +535,15 @@ export default function ShareStory() {
 
       {/* Display User's Stories */}
       <h2 className="text-2xl font-bold text-gray-900 mt-12 mb-6">Your Stories</h2>
-      {myStories.length === 0 ? (
+      {loadingStories ? (
+        <div className="text-center py-8">
+          <Loader2 className="animate-spin h-8 w-8 mx-auto text-pink-500" />
+          <p className="mt-2 text-gray-500">Loading your stories...</p>
+        </div>
+      ) : myStories.length === 0 ? (
         <p className="text-gray-500 text-center">You haven't shared any stories yet.</p>
       ) : (
-        <ul className="space-y-6"> {/* Increased spacing */}
+        <ul className="space-y-6">
           {myStories.map(story => {
             const displayContent = correctedStories[story.id] || story.content; // Show corrected content if available
             const isCorrecting = loadingCorrection[story.id];
@@ -540,3 +641,22 @@ export default function ShareStory() {
     </div>
   );
 }
+
+// Add a helper function to upload files
+const uploadMediaFile = async (file: File, userId: string): Promise<string> => {
+  // Check file size (50 MB limit)
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error(`File ${file.name} is too large. Maximum size is 50 MB.`);
+  }
+
+  // Check file type
+  const allowedTypes = ['image/', 'video/', 'audio/'];
+  if (!allowedTypes.some(type => file.type.startsWith(type))) {
+    throw new Error(`File ${file.name} is not a supported type.`);
+  }
+
+  // Upload to Firebase Storage
+  const storageRef = ref(storage, `story-media/${userId}/${Date.now()}-${file.name}`);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};

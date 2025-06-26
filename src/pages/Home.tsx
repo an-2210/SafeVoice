@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { Link } from 'react-router-dom';
 import Slider from 'react-slick';
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+
+// Firebase imports
+import { auth } from '../lib/firebase';
+import { 
+  getFirestore, 
+  collection, 
+  query, 
+  orderBy, 
+  limit, 
+  getDocs,
+  addDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
+
+// Initialize Firestore
+const db = getFirestore();
 
 // Import slick-carousel CSS
 import "slick-carousel/slick/slick.css";
@@ -37,7 +51,29 @@ interface Testimonial {
   author_id?: string;
 }
 
+const PrevArrow = (props: any) => {
+  const { onClick } = props;
+  return (
+    <button
+      onClick={onClick}
+      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 text-pink-500 hover:text-pink-700 bg-white rounded-full p-2 shadow-md -ml-4"
+    >
+      <FaChevronLeft />
+    </button>
+  );
+};
 
+const NextArrow = (props: any) => {
+  const { onClick } = props;
+  return (
+    <button
+      onClick={onClick}
+      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 text-pink-500 hover:text-pink-700 bg-white rounded-full p-2 shadow-md -mr-4"
+    >
+      <FaChevronRight />
+    </button>
+  );
+};
 
 const testimonialSliderSettings = {
   dots: false,
@@ -48,7 +84,8 @@ const testimonialSliderSettings = {
   slidesToScroll: 1,
   autoplay: true,
   autoplaySpeed: 5000,
-
+  prevArrow: <PrevArrow />,
+  nextArrow: <NextArrow />,
   responsive: [
     {
       breakpoint: 1024,
@@ -58,7 +95,6 @@ const testimonialSliderSettings = {
         infinite: true,
         arrows: true,
         dots: false,
-
       }
     },
     {
@@ -69,7 +105,6 @@ const testimonialSliderSettings = {
         infinite: true,
         arrows: true,
         dots: false,
-
       }
     }
   ]
@@ -97,53 +132,69 @@ export default function Home() {
   }, []);
 
   async function fetchTopStories() {
-    const { data, error } = await supabase
-      .from('stories')
-      .select(`
-        id,
-        title,
-        content,
-        media_urls,
-        author_id,
-        profiles:author_id(username),
-        reactions:reactions(count)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(9); // Fetch more stories for the slider (e.g., 9 for 3 slides of 3)
-
-    if (error) {
-      console.error('Error fetching stories for top stories:', error);
-      return;
-    }
-
-    if (data) {
-      const storiesWithReactions: Story[] = data.map((story) => ({
-        ...story,
-        profiles: Array.isArray(story.profiles) ? story.profiles[0] : story.profiles, // Fix: get first profile object
-        reactionsCount: story.reactions?.[0]?.count || 0,
-      }));
-      storiesWithReactions.sort((a, b) => (b.reactionsCount ?? 0) - (a.reactionsCount ?? 0));
-      setTopStories(storiesWithReactions); // Set all fetched & sorted stories for the slider
+    try {
+      // Create a query to get stories ordered by creation date
+      const storiesRef = collection(db, 'stories');
+      const q = query(
+        storiesRef,
+        orderBy('created_at', 'desc'),
+        limit(9)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const storiesData: Story[] = [];
+      
+      // Process each document
+      for (const doc of querySnapshot.docs) {
+        const storyData = {
+          id: doc.id,
+          ...doc.data(),
+          reactionsCount: 0
+        } as Story;
+        
+        // Get reaction count for this story
+        const reactionsRef = collection(db, 'reactions');
+        const reactionsQuery = query(
+          reactionsRef,
+          // where('story_id', '==', doc.id)
+        );
+        
+        const reactionsSnapshot = await getDocs(reactionsQuery);
+        // Count reactions for this story
+        const storyReactions = reactionsSnapshot.docs.filter(
+          reactionDoc => reactionDoc.data().story_id === doc.id
+        );
+        
+        storyData.reactionsCount = storyReactions.length;
+        storiesData.push(storyData);
+      }
+      
+      // Sort by reaction count (highest first)
+      storiesData.sort((a, b) => (b.reactionsCount ?? 0) - (a.reactionsCount ?? 0));
+      setTopStories(storiesData);
+    } catch (error) {
+      console.error('Error fetching stories:', error);
     }
   }
 
   async function fetchTestimonials() {
-    const { data, error } = await supabase
-      .from('testimonials')
-      .select(`
-        id,
-        content,
-        author_id
-      `)
-      .order('created_at', { ascending: false })
-      .limit(9); // Fetch more testimonials for the slider
-
-    if (error) {
+    try {
+      const testimonialsRef = collection(db, 'testimonials');
+      const q = query(
+        testimonialsRef,
+        orderBy('created_at', 'desc'),
+        limit(9)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const testimonialsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Testimonial[];
+      
+      setTestimonials(testimonialsData);
+    } catch (error) {
       console.error('Error fetching testimonials:', error);
-      return;
-    }
-    if (data) {
-      setTestimonials(data as Testimonial[]);
     }
   }
 
@@ -151,31 +202,30 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
   
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const user = auth.currentUser;
+    if (!user) {
       toast.error('Please sign in to add a testimonial.');
       setLoading(false);
       return;
     }
   
-    const { error } = await supabase
-      .from('testimonials')
-      .insert({
+    try {
+      const testimonialsRef = collection(db, 'testimonials');
+      await addDoc(testimonialsRef, {
         content: testimonialContent,
-        author_id: user.id,
+        author_id: user.uid,
+        created_at: serverTimestamp()
       });
-  
-    if (error) {
+      
+      toast.success('Testimonial added successfully!');
+      setTestimonialContent('');
+      fetchTestimonials(); // Refresh the testimonials list
+    } catch (error) {
+      console.error('Error adding testimonial:', error);
       toast.error('Failed to add testimonial. Please try again.');
-      console.error('Error inserting testimonial:', error);
+    } finally {
       setLoading(false);
-      return;
     }
-  
-    toast.success('Testimonial added successfully!');
-    setTestimonialContent('');
-    setLoading(false);
-    fetchTestimonials(); // Refresh the testimonials list
   }
 
   return (
@@ -195,11 +245,13 @@ export default function Home() {
         </div>
       </div>
 
-       {/* Top Stories Section */}
-       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {/* Top Stories Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">Top Stories</h2>
         {topStories.length > 0 ? (
           <Slider
+            prevArrow={<PrevArrow />}
+            nextArrow={<NextArrow />}
             dots={false}
             arrows={true}
             infinite={topStories.length > 3}
@@ -208,7 +260,6 @@ export default function Home() {
             slidesToScroll={1}
             autoplay={true}
             autoplaySpeed={5000}
-
             responsive={[
               {
                 breakpoint: 1024,
@@ -218,8 +269,8 @@ export default function Home() {
                   infinite: topStories.length > 2,
                   arrows: true,
                   dots: false,
-
-              }},
+                }
+              },
               {
                 breakpoint: 640,
                 settings: {
@@ -228,7 +279,6 @@ export default function Home() {
                   infinite: topStories.length > 1,
                   arrows: true,
                   dots: false,
-
                 }
               }
             ]}

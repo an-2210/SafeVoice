@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, Globe, Shield, BookOpen, Heart, AlertTriangle } from 'lucide-react';
-import { toast } from 'react-hot-toast'; // Assuming you use react-hot-toast for notifications
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../lib/firebase';
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  serverTimestamp 
+} from 'firebase/firestore';
 
-// Define the structure of an NGO object (adjust based on your actual API response)
+// Initialize Firestore
+const db = getFirestore();
+
+// Define the structure of an NGO object
 interface NGO {
-  id: string; // Or number, depending on your backend
+  id: string;
   name: string;
   description: string;
-  // Add other relevant fields like contact, website, etc. if available from the API
-  // contact?: string;
-  // website?: string;
+  contact?: string;
+  email?: string;
+  website?: string;
+  registration_number?: string;
+  approved?: boolean;
 }
 
 export default function Resources() {
+  const navigate = useNavigate();
+
   // State for the NGO request form
   const [ngoName, setNGOName] = useState('');
   const [description, setDescription] = useState('');
@@ -27,23 +46,35 @@ export default function Resources() {
   const [searchQuery, setSearchQuery] = useState(''); // State for search input
   const [visibleNGOs, setVisibleNGOs] = useState(6); // Start with 6 visible NGOs
 
-  // Fetch approved NGOs from the backend when the component mounts
+  // Fetch approved NGOs from Firestore when the component mounts
   useEffect(() => {
     const fetchNGOs = async () => {
       setLoadingNGOs(true); // Start loading
       try {
-        // Use environment variable for the API base URL
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/approved-ngos`);
-
-        if (!response.ok) {
-          // Log more details if the response is not ok
-          const errorData = await response.text(); // Try to get error text
-          console.error(`Error fetching NGOs: ${response.status} ${response.statusText}`, errorData);
-          throw new Error(`Failed to fetch NGOs (Status: ${response.status})`);
-        }
-
-        const data: NGO[] = await response.json(); // Ensure the response matches the NGO type
-        setNGOs(data);
+        // Create a query to get approved NGOs
+        const ngosRef = collection(db, 'ngos');
+        const q = query(
+          ngosRef,
+          where('approved', '==', true),
+          orderBy('name') // Order by name for consistent display
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const ngosList: NGO[] = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id, // Use Firestore's document ID
+            name: data.name,
+            description: data.description,
+            contact: data.contact,
+            email: data.email,
+            website: data.website,
+            registration_number: data.registration_number,
+            approved: data.approved
+          };
+        });
+        
+        setNGOs(ngosList);
       } catch (error) {
         console.error('Error fetching NGOs:', error);
         toast.error('Could not load the list of NGOs. Please try refreshing the page.'); // User-friendly error
@@ -71,47 +102,42 @@ export default function Resources() {
     e.preventDefault(); // Prevent default form submission
     setLoadingRequest(true); // Start loading
 
-    // Basic validation (optional, add more as needed)
+    // Check authentication
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('Please sign in to submit a request');
+      navigate('/auth');
+      setLoadingRequest(false);
+      return;
+    }
+
+    // Basic validation
     if (!ngoName.trim() || !description.trim() || !contact.trim() || !email.trim() || !registrationNumber.trim()) {
         toast.error("Please fill in all required fields.");
         setLoadingRequest(false);
         return;
     }
 
-    const requestData = {
-      name: ngoName,
-      description,
-      contact,
-      email,
-      registrationNumber,
-    };
-
     try {
-      // Use environment variable for the API base URL
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/send-ngo-request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add any necessary authentication headers if required by your backend
-          // 'Authorization': `Bearer ${your_token}`
-        },
-        body: JSON.stringify(requestData),
+      // Add a new document to the ngo_requests collection
+      await addDoc(collection(db, 'ngo_requests'), {
+        name: ngoName,
+        description,
+        contact,
+        email,
+        registration_number: registrationNumber,
+        user_id: user.uid,
+        created_at: serverTimestamp(),
+        approved: false // Default to not approved
       });
 
-      if (response.ok) {
-        toast.success('Your request has been submitted successfully! It will be reviewed by our team.');
-        // Reset form fields after successful submission
-        setNGOName('');
-        setDescription('');
-        setContact('');
-        setEmail('');
-        setRegistrationNumber('');
-      } else {
-        // Handle specific error statuses if needed
-        const errorData = await response.json().catch(() => ({ message: 'Failed to submit request. Please try again.' }));
-        console.error(`Error submitting NGO request: ${response.status}`, errorData);
-        toast.error(errorData.message || 'Failed to submit request. Please check your details and try again.');
-      }
+      toast.success('Your request has been submitted successfully! It will be reviewed by our team.');
+      // Reset form fields after successful submission
+      setNGOName('');
+      setDescription('');
+      setContact('');
+      setEmail('');
+      setRegistrationNumber('');
     } catch (error) {
       console.error('Error submitting NGO request:', error);
       toast.error('An unexpected error occurred while submitting your request. Please try again later.');
@@ -146,8 +172,18 @@ export default function Resources() {
               {filteredNGOs.slice(0, visibleNGOs).map((ngo) => (
                 <div key={ngo.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">{ngo.name}</h3>
-                  <p className="text-gray-600 text-sm">{ngo.description}</p>
-                  {/* Add more details like contact/website if available */}
+                  <p className="text-gray-600 text-sm mb-3">{ngo.description}</p>
+                  {ngo.contact && (
+                    <p className="text-gray-700 text-sm"><strong>Contact:</strong> {ngo.contact}</p>
+                  )}
+                  {ngo.email && (
+                    <p className="text-gray-700 text-sm"><strong>Email:</strong> {ngo.email}</p>
+                  )}
+                  {ngo.website && (
+                    <p className="text-gray-700 text-sm">
+                      <strong>Website:</strong> <a href={ngo.website} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline">{ngo.website}</a>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -210,7 +246,7 @@ export default function Resources() {
                   Contact Number <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="tel" // Use type="tel" for phone numbers
+                  type="tel"
                   id="contact"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
