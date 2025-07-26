@@ -10,6 +10,8 @@ import About from './pages/About';
 import Auth from './pages/Auth';
 import Footer from './components/Footer';
 import EditStory from './pages/EditStory';
+import AdminDashboard from './pages/AdminDashboard';
+
 
 
 function App() {
@@ -26,6 +28,7 @@ function App() {
             <Route path="/resources" element={<Resources />} />
             <Route path="/about" element={<About />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<AdminDashboard />} />
 
           </Routes>
         </main>

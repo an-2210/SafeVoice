@@ -5,6 +5,9 @@ import { auth } from '../lib/firebase'; // Change this import
 import { onAuthStateChanged } from 'firebase/auth'; // Add this import
 import { toast } from 'react-hot-toast'; // Add for sign-out feedback
 
+// Define admin emails. This should be consistent with your AdminPendingNGOs page.
+const ADMIN_EMAILS = ['safevoiceforwomen@gmail.com', 'piyushydv011@gmail.com', 'aditiraj0205@gmail.com'];
+
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -19,6 +22,8 @@ export default function Navbar() {
     // Clean up the subscription
     return () => unsubscribe();
   }, []);
+
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
   const handleSignOut = async () => {
     try {
@@ -58,7 +63,12 @@ export default function Navbar() {
             <Link to="/resources" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Resources</Link>
             <Link to="/about" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
             {user ? (
-              <div className="flex items-center space-x-4">
+              <div className="relative flex items-center space-x-4">
+                {isAdmin && (
+              <Link to="/admin" className="text-yellow-500 font-bold px-3 py-2 rounded-md hover:text-yellow-600">
+                    Admin Panel
+                  </Link>
+                )}
                 <span className="text-gray-700">Anonymous_{user.uid.slice(0, 8)}</span>
                 <button
                   onClick={handleSignOut}
@@ -99,6 +109,11 @@ export default function Navbar() {
               <Link to="/about" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
               {user ? (
                 <>
+                  {isAdmin && (
+                <Link to="/admin" className="block text-yellow-500 font-bold px-3 py-2 rounded-md hover:text-yellow-600">
+                      Admin Panel
+                    </Link>
+                  )}
                   <span className="block text-gray-700 px-3 py-2">Anonymous_{user.uid.slice(0, 8)}</span>
                   <button
                     onClick={handleSignOut}

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { auth } from '../lib/firebase';
-import { Edit, Trash2, CheckSquare, Loader2 } from 'lucide-react';
+import { Edit, Trash2, CheckSquare, Loader2, Sparkles } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 // Firebase imports
@@ -42,6 +42,8 @@ const TAGS = [
   'Recovery',
   'Support',
   'Healing',
+  'Mental Health',
+  'Legal',
 ];
 
 // Add this function to ensure profile exists before creating a story
@@ -89,6 +91,87 @@ export default function ShareStory() {
   const [loadingCorrection, setLoadingCorrection] = useState<{ [storyId: string]: boolean }>({});
   const [loadingFormCorrection, setLoadingFormCorrection] = useState(false);
   const [loadingStories, setLoadingStories] = useState(false); // Add a loading state for fetching stories
+
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
+  const [audioURL, setAudioURL] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // AI Tag Suggestion state
+  const [aiTagLoading, setAiTagLoading] = useState(false);
+  const [aiTagError, setAiTagError] = useState<string | null>(null);
+
+  const handleSuggestTags = async () => {
+    if (!content.trim()) {
+      toast.error("Please write a story before suggesting tags.");
+      return;
+    }
+    setAiTagLoading(true);
+    setAiTagError(null);
+    try {
+      const suggested = await suggestTags(content);
+      // Merge with existing tags, removing duplicates
+      setSelectedTags(prev => Array.from(new Set([...prev, ...suggested])));
+      if (suggested.length > 0) {
+        toast.success("Tags suggested!");
+      } else {
+        toast.error("Could not suggest any relevant tags.");
+      }
+    } catch (err) {
+      setAiTagError('Failed to suggest tags.');
+      toast.error('Failed to suggest tags.');
+    } finally {
+      setAiTagLoading(false);
+    }
+  };
+  // Voice recording handlers
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new window.MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setRecordedAudio(audioBlob);
+        setAudioURL(URL.createObjectURL(audioBlob));
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      toast.error('Could not access microphone.');
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleSaveRecording = () => {
+    if (recordedAudio) {
+      // Convert Blob to File and add to mediaFiles
+      const audioFile = new File([recordedAudio], `voice-recording-${Date.now()}.webm`, { type: 'audio/webm' });
+      setMediaFiles(prev => [...prev, audioFile]);
+      setRecordedAudio(null);
+      setAudioURL(null);
+      toast.success('Voice recording added!');
+    }
+  };
+
+  const handleDiscardRecording = () => {
+    setRecordedAudio(null);
+    setAudioURL(null);
+  };
 
   const navigate = useNavigate();
 
@@ -248,8 +331,10 @@ export default function ShareStory() {
     e.preventDefault();
     setLoading(true);
 
-    if (!title.trim() || !content.trim()) {
-      toast.error('Title and content are required.');
+    // If no text and no audio, require at least one
+    const hasAudio = mediaFiles.some(f => f.type.startsWith('audio/'));
+    if (!hasAudio && (!title.trim() || !content.trim())) {
+      toast.error('Please provide a title and story, or record/upload a voice message.');
       setLoading(false);
       return;
     }
@@ -268,7 +353,7 @@ export default function ShareStory() {
       setLoading(false);
       return;
     }
-    
+
     // Ensure profile exists
     const profileCreated = await ensureProfileExists(user);
     if (!profileCreated) {
@@ -276,7 +361,10 @@ export default function ShareStory() {
       setLoading(false);
       return;
     }
-    
+
+    let storyText = content;
+    // No audio transcription: if no text, storyText remains empty
+
     let mediaUrls: string[] = [];
     if (mediaFiles && mediaFiles.length > 0) {
       for (const file of mediaFiles) {
@@ -297,7 +385,7 @@ export default function ShareStory() {
       // Add a new document to Firestore
       await addDoc(collection(db, 'stories'), {
         title,
-        content,
+        content: storyText,
         tags: selectedTags,
         author_id: user.uid,
         media_urls: mediaUrls,
@@ -321,6 +409,44 @@ export default function ShareStory() {
       setLoading(false);
     }
   };
+
+
+// A map of keywords to suggest tags. This is a client-side alternative
+// to a backend AI service and does not require a Blaze plan.
+const TAG_KEYWORDS: { [tag: string]: string[] } = {
+  'Domestic Violence': ['abuse', 'partner', 'husband', 'boyfriend', 'spouse', 'family', 'home', 'domestic', 'abusive', 'violence', 'coercion', 'controlling', 'hit', 'yelling', 'afraid', 'intimate partner violence'],
+  'Workplace Harassment': ['boss', 'coworker', 'job', 'office', 'workplace', 'harassment', 'manager', 'colleague', 'supervisor', 'hr', 'human resources', 'uncomfortable', 'retaliation', 'hostile environment'],
+  'Street Harassment': ['catcall', 'street', 'public', 'stranger', 'followed', 'wolf-whistle', 'walking home', 'public transport', 'groped', 'unwanted attention', 'lewd'],
+  'Cyberbullying': ['online', 'social media', 'troll', 'cyber', 'internet', 'dm', 'message', 'doxxing', 'impersonation', 'facebook', 'instagram', 'twitter', 'snapchat', 'tiktok', 'rumors', 'threats'],
+  'Sexual Harassment': ['sexual', 'unwanted', 'touch', 'assault', 'inappropriate', 'groped', 'forced', 'advances', 'rape', 'coerced', 'non-consensual', 'violated', 'molestation'],
+  'Discrimination': ['race', 'gender', 'religion', 'age', 'disability', 'discriminated', 'unequal', 'bias', 'ethnicity', 'sexuality', 'orientation', 'prejudice', 'unfairly', 'stereotyped', 'marginalized'],
+  'Recovery': ['healing', 'recovering', 'therapy', 'support group', 'moving on', 'survivor', 'coping', 'strength', 'resilience', 'overcoming'],
+  'Support': ['support', 'help', 'advice', 'community', 'listen', 'friends', 'helpline', 'resources', 'guidance', 'ally', 'allies', 'safe space'],
+  'Healing': ['healing', 'therapy', 'counseling', 'peace', 'overcome', 'trauma', 'mental health', 'self-care', 'processing', 'rebuilding', 'inner peace'],
+  'Mental Health': ['anxiety', 'depression', 'ptsd', 'trauma', 'panic attacks', 'stress', 'feeling down', 'suicidal', 'mental health', 'counseling'],
+  'Legal': ['police', 'report', 'legal', 'lawyer', 'court', 'fir', 'case', 'justice', 'rights', 'filed a complaint'],
+};
+
+async function suggestTags(storyText: string): Promise<string[]> {
+  if (!storyText.trim()) {
+    return [];
+  }
+
+  const lowerCaseText = storyText.toLowerCase();
+  const suggested = new Set<string>();
+
+  for (const tag in TAG_KEYWORDS) {
+    for (const keyword of TAG_KEYWORDS[tag]) {
+      // Use a regex to match whole words to avoid partial matches (e.g., 'her' in 'therapy')
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(lowerCaseText)) {
+        suggested.add(tag);
+      }
+    }
+  }
+
+  return Array.from(suggested);
+}
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -452,10 +578,11 @@ export default function ShareStory() {
           />
         </div>
 
-        {/* Media Upload */}
+
+        {/* Media Upload & Voice Recording */}
         <div>
           <label htmlFor="media" className="block text-sm font-medium text-gray-700">
-            Upload Media (Optional, Max 50MB)
+            Upload Media (Optional, Max 200MB)
           </label>
           <input
             type="file"
@@ -471,6 +598,50 @@ export default function ShareStory() {
             }}
             className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
           />
+
+          {/* Voice Recording Controls */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Or record your voice:</label>
+            {!isRecording && !recordedAudio && (
+              <button
+                type="button"
+                onClick={handleStartRecording}
+                className="inline-flex items-center bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600"
+              >
+                🎤 Record Voice
+              </button>
+            )}
+            {isRecording && (
+              <button
+                type="button"
+                onClick={handleStopRecording}
+                className="inline-flex items-center bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                ⏹️ Stop Recording
+              </button>
+            )}
+            {recordedAudio && audioURL && (
+              <div className="mt-2 flex flex-col gap-2">
+                <audio controls src={audioURL} className="w-full" />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveRecording}
+                    className="inline-flex items-center bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                  >
+                    Save Recording
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDiscardRecording}
+                    className="inline-flex items-center bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Media Files List */}
@@ -495,9 +666,25 @@ export default function ShareStory() {
 
         {/* Tags Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tags
-          </label>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Tags (optional)
+            </label>
+            <button
+              type="button"
+              onClick={handleSuggestTags}
+              className="inline-flex items-center text-xs text-purple-600 hover:text-purple-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={aiTagLoading || !content.trim()}
+              title="Suggest Tags Based on Story Content"
+            >
+              {aiTagLoading ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-1" />
+              ) : (
+                <Sparkles size={14} className="mr-1" />
+              )}
+              {aiTagLoading ? 'Suggesting...' : 'Suggest Tags'}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {TAGS.map(tag => (
               <button
@@ -514,6 +701,7 @@ export default function ShareStory() {
               </button>
             ))}
           </div>
+          {aiTagError && <p className="text-xs text-red-500 mt-1">{aiTagError}</p>}
         </div>
 
         {/* Submit Button */}
@@ -644,9 +832,9 @@ export default function ShareStory() {
 
 // Add a helper function to upload files
 const uploadMediaFile = async (file: File, userId: string): Promise<string> => {
-  // Check file size (50 MB limit)
-  if (file.size > 50 * 1024 * 1024) {
-    throw new Error(`File ${file.name} is too large. Maximum size is 50 MB.`);
+  // Check file size (200 MB limit)
+  if (file.size > 200 * 1024 * 1024) {
+    throw new Error(`File ${file.name} is too large. Maximum size is 200 MB.`);
   }
 
   // Check file type

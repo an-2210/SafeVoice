@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Globe, Shield, BookOpen, Heart, AlertTriangle } from 'lucide-react';
+import { Phone, Globe, Shield, BookOpen, Heart, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
@@ -11,11 +11,17 @@ import {
   query, 
   where, 
   orderBy, 
-  serverTimestamp 
+  serverTimestamp,
+  doc,
+  deleteDoc
 } from 'firebase/firestore';
 
 // Initialize Firestore
 const db = getFirestore();
+
+// Define admin emails. This should be consistent with your other admin-only pages.
+const ADMIN_EMAILS = ['safevoiceforwomen@gmail.com', 'piyushydv011@gmail.com', 'aditiraj0205@gmail.com'];
+
 
 // Define the structure of an NGO object
 interface NGO {
@@ -31,6 +37,7 @@ interface NGO {
 
 export default function Resources() {
   const navigate = useNavigate();
+  const [user, setUser] = useState(auth.currentUser);
 
   // State for the NGO request form
   const [ngoName, setNGOName] = useState('');
@@ -46,6 +53,13 @@ export default function Resources() {
   const [searchQuery, setSearchQuery] = useState(''); // State for search input
   const [visibleNGOs, setVisibleNGOs] = useState(6); // Start with 6 visible NGOs
 
+  // Check for admin status on auth state change
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(setUser);
+    return () => unsubscribe();
+  }, []);
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
+
   // Fetch approved NGOs from Firestore when the component mounts
   useEffect(() => {
     const fetchNGOs = async () => {
@@ -56,7 +70,7 @@ export default function Resources() {
         const q = query(
           ngosRef,
           where('approved', '==', true),
-          orderBy('name') // Order by name for consistent display
+          // orderBy('name') // This requires a composite index. We will sort on the client.
         );
         
         const querySnapshot = await getDocs(q);
@@ -74,6 +88,8 @@ export default function Resources() {
           };
         });
         
+        // Sort the NGOs on the client-side since we removed orderBy from the query
+        ngosList.sort((a, b) => a.name.localeCompare(b.name));
         setNGOs(ngosList);
       } catch (error) {
         console.error('Error fetching NGOs:', error);
@@ -91,6 +107,27 @@ export default function Resources() {
     ngo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ngo.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handler for deleting an approved NGO (admins only)
+  const handleDeleteNGO = async (ngoId: string, ngoName: string) => {
+    if (!window.confirm(`Are you sure you want to delete the NGO "${ngoName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    const toastId = toast.loading(`Deleting ${ngoName}...`);
+    try {
+      const ngoRef = doc(db, 'ngos', ngoId);
+      await deleteDoc(ngoRef);
+      
+      // Update state to remove the NGO from the list in the UI
+      setNGOs(prevNgos => prevNgos.filter(ngo => ngo.id !== ngoId));
+      
+      toast.success(`${ngoName} has been deleted.`, { id: toastId });
+    } catch (error) {
+      console.error('Error deleting NGO:', error);
+      toast.error(`Failed to delete ${ngoName}.`, { id: toastId });
+    }
+  };
 
   // Handler to show more NGOs
   const handleShowMore = () => {
@@ -170,7 +207,18 @@ export default function Resources() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredNGOs.slice(0, visibleNGOs).map((ngo) => (
-                <div key={ngo.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+                <div key={ngo.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow relative group">
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleDeleteNGO(ngo.id, ngo.name)}
+                        className="p-1.5 rounded-full bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        aria-label={`Delete ${ngo.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">{ngo.name}</h3>
                   <p className="text-gray-600 text-sm mb-3">{ngo.description}</p>
                   {ngo.contact && (
