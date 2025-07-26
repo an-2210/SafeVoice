@@ -240,8 +240,8 @@ export default function Stories() {
         throw new Error("Story not found");
       }
 
-      // --- Make API call to your Firebase Cloud Function endpoint ---
-      const functionUrl = `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/translate`;
+      // --- Make API call to your Netlify Function endpoint ---
+      const functionUrl = `/.netlify/functions/translate`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',

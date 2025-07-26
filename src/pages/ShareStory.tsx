@@ -460,8 +460,8 @@ async function suggestTags(storyText: string): Promise<string[]> {
   const handleGrammarFix = async (storyId: string, originalContent: string) => {
     setLoadingCorrection(prev => ({ ...prev, [storyId]: true }));
     try {
-      // Assuming you'll deploy a Firebase Cloud Function for grammar correction
-      const functionUrl = `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/correctGrammar`;
+      // This now points to your Netlify Function endpoint
+      const functionUrl = `/.netlify/functions/correct-grammar`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -499,8 +499,8 @@ async function suggestTags(storyText: string): Promise<string[]> {
     }
     setLoadingFormCorrection(true);
     try {
-      // Assuming you'll deploy a Firebase Cloud Function for grammar correction
-      const functionUrl = `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/correctGrammar`;
+      // This now points to your Netlify Function endpoint
+      const functionUrl = `/.netlify/functions/correct-grammar`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
