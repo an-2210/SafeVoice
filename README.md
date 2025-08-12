@@ -2,7 +2,8 @@
 
 **Live Demo:** [SafeVoice on Netlify](https://safevoice.netlify.app)  
 
-##📌About
+## 📌 About
+
 Safevoice is a secure, AI-enhanced platform that lets individuals anonymously share harassment experiences, attach media (photos/audio), and access verified NGO resources. It integrates language tools to improve clarity and reach, and is designed to be beginner-friendly for open-source contributors.
 
 ## ✨ Features
