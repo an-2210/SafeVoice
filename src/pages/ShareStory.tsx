@@ -527,7 +527,7 @@ async function suggestTags(storyText: string): Promise<string[]> {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8 mt-20">
       {/* Form for sharing a new story */}
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Share Your Story</h1>
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow mb-12">

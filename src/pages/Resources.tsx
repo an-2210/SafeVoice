@@ -185,7 +185,7 @@ export default function Resources() {
 
   // --- JSX Rendering ---
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16">
       <h1 className="text-3xl font-bold text-center text-gray-900 mb-10">Resources & Support</h1>
 
       {/* Collaborated NGOs Section */}

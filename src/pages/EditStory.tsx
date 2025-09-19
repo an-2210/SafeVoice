@@ -178,7 +178,7 @@ export default function EditStory() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8 pt-16">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Edit Your Story</h1>
       <form onSubmit={handleUpdate} className="space-y-6">
         <div>
