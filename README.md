@@ -75,7 +75,7 @@ vite.config.js
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/Deepika14145/QuickFactChecker.git
+   git clone https://github.com/Piyushydv08/SafeVoice.git
    cd QuickFactChecker
    ```
 2. **Install Dependencies**
@@ -122,7 +122,7 @@ For queries, feedback, or guidance regarding this project, you can contact the *
 - 📩 **GitHub**: [Piyushydv08](https://github.com/Piyushydv08)
 - 💬 **By commit/PR comments**: Please tag the mentor in your commit or pull request discussion for direct feedback.  
  
-Original Repository: [SafeVoice](https://github.com/Piyushydv08/SafeVoice)  
+Original Repository: [SafeVoice](https://github.com/Piyushydv08/SafeVoice.git)  
 
 
 
