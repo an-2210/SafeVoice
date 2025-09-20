@@ -47,7 +47,7 @@ Make sure you have the following installed:
 
 2.  *Clone Your Fork*
     ```bash
-    git clone [https://github.com/YOUR-USERNAME/SafeVoice.git](https://github.com/YOUR-USERNAME/SafeVoice.git)
+    git clone https://github.com/Piyushydv08/SafeVoice.git
     cd SafeVoice
     ```
     
