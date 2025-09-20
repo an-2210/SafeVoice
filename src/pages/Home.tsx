@@ -234,7 +234,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pt-16">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center transform transition-transform duration-500 hover:scale-105 hover:shadow-2xl">
