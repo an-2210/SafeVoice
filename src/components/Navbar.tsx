@@ -61,6 +61,7 @@ export default function Navbar() {
             <Link to="/stories" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Stories</Link>
             <Link to="/share-story" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Share your Story</Link>
             <Link to="/resources" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Resources</Link>
+            <Link to="/faqs" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">FAQs</Link>
             <Link to="/about" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
             {user ? (
               <div className="relative flex items-center space-x-4">
@@ -106,6 +107,7 @@ export default function Navbar() {
               <Link to="/stories" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Stories</Link>
               <Link to="/share-story" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Share your Story</Link>
               <Link to="/resources" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Resources</Link>
+              <Link to="/faqs" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">FAQs</Link>
               <Link to="/about" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
               {user ? (
                 <>
