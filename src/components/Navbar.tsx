@@ -37,8 +37,8 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-white shadow-lg ">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link
@@ -61,6 +61,7 @@ export default function Navbar() {
             <Link to="/stories" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Stories</Link>
             <Link to="/share-story" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Share your Story</Link>
             <Link to="/resources" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Resources</Link>
+            <Link to="/faqs" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">FAQs</Link>
             <Link to="/about" className="text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
             {user ? (
               <div className="relative flex items-center space-x-4">
@@ -106,6 +107,7 @@ export default function Navbar() {
               <Link to="/stories" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Stories</Link>
               <Link to="/share-story" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Share your Story</Link>
               <Link to="/resources" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">Resources</Link>
+              <Link to="/faqs" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">FAQs</Link>
               <Link to="/about" className="block text-gray-700 hover:text-pink-500 px-3 py-2 rounded-md">About</Link>
               {user ? (
                 <>

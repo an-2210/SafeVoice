@@ -308,7 +308,7 @@ export default function Stories() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-20">
       <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Stories of Strength</h1>
 
       {/* Filter Controls */}

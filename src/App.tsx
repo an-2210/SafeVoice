@@ -11,6 +11,7 @@ import Auth from './pages/Auth';
 import Footer from './components/Footer';
 import EditStory from './pages/EditStory';
 import AdminDashboard from './pages/AdminDashboard';
+import FAQs from './pages/FAQs';
 
 
 
@@ -27,6 +28,7 @@ function App() {
             <Route path="/edit-story/:id" element={<EditStory />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/about" element={<About />} />
+            <Route path="/faqs" element={<FAQs />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminDashboard />} />
 
