@@ -76,7 +76,7 @@ vite.config.js
 1. **Clone the Repository**
    ```bash
    git clone https://github.com/Piyushydv08/SafeVoice.git
-   cd QuickFactChecker
+   cd SafeVoice
    ```
 2. **Install Dependencies**
 
@@ -96,7 +96,7 @@ npm run dev
 ### ▶️ Usage
 --- 
 
-- Visit http://localhost:5173 in your browser.
+- Visit http://localhost:5000 in your browser.
 - Sign up / Log in securely using Firebase Auth.
 - Share an anonymous story with or without media.
 - Translate and correct grammar instantly.
