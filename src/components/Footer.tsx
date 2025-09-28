@@ -41,6 +41,12 @@ export default function Footer() {
               <li>
                 <Link to="/about" className="text-gray-400 hover:text-pink-500">About</Link>
               </li>
+              <li>
+                <Link to="/PrivacyPolicy" className="text-gray-400 hover:text-pink-500">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link to="/termsandconditions" className="text-gray-400 hover:text-pink-500">Terms and Conditions</Link>
+              </li>
             </ul>
           </div>
 
