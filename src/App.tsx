@@ -12,6 +12,7 @@ import Footer from './components/Footer';
 import EditStory from './pages/EditStory';
 import AdminDashboard from './pages/AdminDashboard';
 import FAQs from './pages/FAQs';
+import PrivacyPolicy from './pages/Privacypolicy';
 
 
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="/faqs" element={<FAQs />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
 
           </Routes>
         </main>
