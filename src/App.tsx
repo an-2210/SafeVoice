@@ -12,7 +12,7 @@ import Footer from './components/Footer';
 import EditStory from './pages/EditStory';
 import AdminDashboard from './pages/AdminDashboard';
 import FAQs from './pages/FAQs';
-
+import Termsandconditions from './pages/termsandconditions';
 
 
 function App() {
